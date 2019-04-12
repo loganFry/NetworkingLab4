@@ -78,17 +78,19 @@ def send_metadata(file_path, sock, troll_port, client_ip, client_port):
             if seq == 0:
                 # Server received seg 1
                 seg_1_acked = True
-                print('seg 1 ACKed')
+                print('Received ACK for file size')
                 send_file_name(client_ip, client_port, file_path, troll_port, 1)
             elif seq == 1:
                 # Server received seg 2
-                print('seg 2 ACKed')
+                print('Received ACK for file name')
                 return                
         else:
             # Timeout, resend the current segment
             if not seg_1_acked:
+                print('Timeout ocurred, resending file size')
                 send_file_size(client_ip, client_port, file_path, troll_port, 0)
             else:
+                print('Timeout occurred, resending file name')
                 send_file_name(client_ip, client_port, file_path, troll_port, 1)
 
         # Sleep to avoid overrunning UDP buffers
@@ -137,7 +139,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
    
         while True:
             # The timeout is set to be 1 sec.
-            read, write, err = select.select([sock], [], [], 2)
+            read, write, err = select.select([sock], [], [], 0.5)
             if len(read) > 0:
                 # The socket received an ACK from the server.
                 data = sock.recv(socket_helpers.SERVER_HEADER_SIZE)
@@ -151,7 +153,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
             else:
                 # Timeout, do not update any state, we will resend the same chunk and sequence 
                 # number.
-                print('Timeout ocurred, will resend seq ' + str(current_seq))
+                print('Timeout ocurred, resending seq ' + str(current_seq))
    
             
             header = socket_helpers.create_client_header(client_ip, client_port, 3, current_seq)
@@ -182,8 +184,8 @@ if __name__ == '__main__':
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('', CLIENT_PORT))
 
-    print('client socket binded to ip ' + socket.gethostbyname(socket.gethostname()) + ', port ' + str(CLIENT_PORT))
-    print('sending all packets to troll port ' + str(TROLL_PORT))
+    print('Client socket binded to IP ' + socket.gethostbyname(socket.gethostname()) + ', port ' + str(CLIENT_PORT))
+    print('Sending all packets to troll port ' + str(TROLL_PORT))
 
     try:
         # Send meta data

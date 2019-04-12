@@ -71,28 +71,35 @@ def receive_file(sock, file_size, file_name, troll_port):
         while total_read < file_size:
             data = s.recv(1000 + socket_helpers.CLIENT_HEADER_SIZE)
             ip, port, flag, seq = socket_helpers.read_client_header(data)
+
+            if flag == 2:
+                # ACK sent for file name was lost, resend it
+                header = socket_helpers.create_server_header(1)
+                sock.sendto(header, ('', TROLL_PORT))
+                print('Resent ACK for file name')
+
             if not ensure_correct_client(ip, port):
                 continue
 
             if seq != current_seq:
-                print('seq mismatch, expected ' + str(current_seq) + ', got ' + str(seq))
+                print('Seq mismatch, expected ' + str(current_seq) + ', got ' + str(seq))
                 # ACK the previous packet
                 prev_seq = socket_helpers.get_other_seq(current_seq)
                 ack = socket_helpers.create_server_header(prev_seq)
                 sock.sendto(ack, ('', troll_port))
-                print('sent repeat ACK for seq ' + str(current_seq))
+                print('Sent repeat ACK for seq ' + str(current_seq))
             else:
                 # ACK the received packet
                 ack = socket_helpers.create_server_header(current_seq)
                 sock.sendto(ack, ('', troll_port))
-                print('sent ACK for seq ' + str(current_seq))
+                print('Sent ACK for seq ' + str(current_seq))
 
                 # Write the chunk to the new file and update server state
                 f.write(data[socket_helpers.CLIENT_HEADER_SIZE:])
                 total_read += 1000.0
                 current_seq = socket_helpers.get_other_seq(current_seq)
                 if int(total_read) % 500000 == 0:
-                    print('received another 500,000 bytes of the file')
+                    print('Received another 500,000 bytes of the file')
 
 def create_output_dir(output_dir):
     """
@@ -115,6 +122,7 @@ def ensure_correct_client(ip, port):
 
     # Only accept data from the client we're currently communicating with
     if CLIENT_IP != ip or CLIENT_PORT != port:
+        print('Received data from different client. IP: ' + ip + ', port: ' + port)
         return False
     else:
         return True
@@ -129,14 +137,12 @@ if __name__ == '__main__':
     # Create the socket and bind to port
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('', SERVER_PORT))
-    print('server socket binded to ip ' + IP + ', port ' + str(SERVER_PORT))
+    print('Server socket binded to IP ' + IP + ', port ' + str(SERVER_PORT))
+    print('Sending all packets to troll port ' + str(TROLL_PORT))
 
     # Initialize server state
     file_size = 0
     file_name = ''
-    current_seq = 0
-    total_read = 0.0
-    file_open = False
 
     # Main state loop
     while True:
@@ -152,11 +158,11 @@ if __name__ == '__main__':
                     # Client sent file size
                     size_data = data[socket_helpers.CLIENT_HEADER_SIZE:socket_helpers.CLIENT_HEADER_SIZE + 4]
                     file_size = int.from_bytes(size_data, byteorder='big')
-                    print('segment 1 received, file size is ' + str(file_size) + ' bytes')
+                    print('Segment 1 received, file size is ' + str(file_size) + ' bytes')
                     state = ServerState.AwaitingFileName
                     header = socket_helpers.create_server_header(seq)
                     s.sendto(header, ('', TROLL_PORT))
-                    print('sent seg 1 ACK')
+                    print('Sent file size ACK')
             elif state == ServerState.AwaitingFileName:
                 # Get data and read header
                 data = s.recv(1000 + socket_helpers.CLIENT_HEADER_SIZE)
@@ -164,15 +170,25 @@ if __name__ == '__main__':
                 if not ensure_correct_client(ip, port):
                     continue
 
+                # Client sent file name
                 if flag == 2:
-                    # Client sent file name
+                    # Read the file name
                     name_data = data[socket_helpers.CLIENT_HEADER_SIZE:socket_helpers.CLIENT_HEADER_SIZE + 20]
                     file_name = name_data.decode('utf-8', 'ignore').strip()
-                    print('segment 2 received, file name is ' + file_name)
-                    state = ServerState.AwaitingFile
+                    print('Segment 2 received, file name is ' + file_name)
+
+                    # ACK the file name
                     header = socket_helpers.create_server_header(seq)
                     s.sendto(header, ('', TROLL_PORT))
-                    print('sent seg 2 ACK')
+                    print('Sent file name ACK')
+
+                    # Move to waiting for file state
+                    state = ServerState.AwaitingFile
+                elif flag == 1:
+                    # ACK sent for file size was lost, resend it
+                    header = socket_helpers.create_server_header(socket_helpers.get_other_seq(seq))
+                    s.sendto(header, ('', TROLL_PORT))
+                    print('Resent ACK for file size')
             elif state == ServerState.AwaitingFile:
                 receive_file(s, file_size, file_name, TROLL_PORT)
                 print('File transferred successfully')
