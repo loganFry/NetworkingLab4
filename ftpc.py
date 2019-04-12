@@ -65,43 +65,50 @@ def send_metadata(file_path, sock, troll_port, client_ip, client_port):
         client_port: The local port number on which the client is running
     """
     seg_1_acked = False
-    seg_2_acked = False
+    send_file_size(client_ip, client_port, file_path, troll_port, 0)
 
-    while not seg_1_acked or not seg_2_acked:
-        # Check if the server told us to what to send next
-        try:
+    while True:
+        # The timeout is set to be 1 sec.
+        read, write, err = select.select([sock], [], [], 1)
+        if len(read) > 0:
+            # The socket has received data.
             data = sock.recv(1000)
             seq = socket_helpers.read_server_header(data)
 
             if seq == 0:
-                # if server sends 2, it means it received seg 1
+                # Server received seg 1
                 seg_1_acked = True
                 print('seg 1 ACKed')
+                send_file_name(client_ip, client_port, file_path, troll_port, 1)
             elif seq == 1:
-                # if server sends 3, it means it received seg 2
-                seg_2_acked = True
+                # Server received seg 2
                 print('seg 2 ACKed')
-        except:
-            pass
-
-        if not seg_1_acked:
-            # Send the first segment with header and 4 byte file size
-            header = socket_helpers.create_client_header(client_ip, client_port, 1, 0)
-            # Get the size of the file in bytes
-            file_size = os.path.getsize(file_path).to_bytes(4, byteorder='big')
-            segment_1 = header + file_size
-            sock.sendto(segment_1, ('', troll_port))
+                break                
+        else:
+            # Timeout, resend the current segment
+            if not seg_1_acked:
+                send_file_size(client_ip, client_port, file_path, troll_port, 0)
+            else:
+                send_file_name(client_ip, client_port, file_path, troll_port, 1)
 
         # Sleep to avoid overrunning UDP buffers
         time.sleep(0.01)
 
-        if seg_1_acked and not seg_2_acked:
-            # Send the second segment with header and 20 byte file name
-            header = socket_helpers.create_client_header(client_ip, client_port, 2, 1)
-            # Get the file name (without path)
-            file_name = socket_helpers.fill_fixed_bytes(os.path.basename(file_path), 20) 
-            segment_2 = header + file_name
-            sock.sendto(segment_2, ('', troll_port))
+def send_file_size(client_ip, client_port, file_path, troll_port, seq):
+    # Send the first segment with header and 4 byte file size
+    header = socket_helpers.create_client_header(client_ip, client_port, 1, seq)
+    # Get the size of the file in bytes
+    file_size = os.path.getsize(file_path).to_bytes(4, byteorder='big')
+    segment_1 = header + file_size
+    sock.sendto(segment_1, ('', troll_port))
+
+def send_file_name(client_ip, client_port, file_path, troll_port, seq):
+    # Send the second segment with header and 20 byte file name
+    header = socket_helpers.create_client_header(client_ip, client_port, 2, seq)
+    # Get the file name (without path)
+    file_name = socket_helpers.fill_fixed_bytes(os.path.basename(file_path), 20) 
+    segment_2 = header + file_name
+    sock.sendto(segment_2, ('', troll_port))
 
 def send_file(file_path, sock, troll_port, client_ip, client_port):
     """
