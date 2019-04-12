@@ -146,7 +146,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
                 if seq == current_seq:
                     # Received an ACK for the current chunk, move to next sequence number
                     # and read the next chunk of the file
-                    current_seq = socket_helpers.get_next_seq(current_seq)
+                    current_seq = socket_helpers.get_other_seq(current_seq)
                     chunk = f.read(1000)
             else:
                 # Timeout, do not update any state, we will resend the same chunk and sequence 

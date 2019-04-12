@@ -95,7 +95,7 @@ def read_server_header(data):
     seq = int(data[0])
     return seq
 
-def get_next_seq(current_seq):
+def get_other_seq(current_seq):
     """
     Given a current sequence number, returns the next one.
     

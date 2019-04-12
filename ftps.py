@@ -76,6 +76,11 @@ def receive_file(sock, file_size, file_name, troll_port):
 
             if seq != current_seq:
                 print('seq mismatch, expected ' + str(current_seq) + ', got ' + str(seq))
+                # ACK the previous packet
+                prev_seq = socket_helpers.get_other_seq(current_seq)
+                ack = socket_helpers.create_server_header(prev_seq)
+                sock.sendto(ack, ('', troll_port))
+                print('sent repeat ACK for seq ' + str(current_seq))
             else:
                 # ACK the received packet
                 ack = socket_helpers.create_server_header(current_seq)
@@ -85,7 +90,7 @@ def receive_file(sock, file_size, file_name, troll_port):
                 # Write the chunk to the new file and update server state
                 f.write(data[socket_helpers.CLIENT_HEADER_SIZE:])
                 total_read += 1000.0
-                current_seq = socket_helpers.get_next_seq(current_seq)
+                current_seq = socket_helpers.get_other_seq(current_seq)
                 if int(total_read) % 500000 == 0:
                     print('received another 500,000 bytes of the file')
 
