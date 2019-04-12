@@ -137,7 +137,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
    
         while True:
             # The timeout is set to be 1 sec.
-            read, write, err = select.select([sock], [], [], 1)
+            read, write, err = select.select([sock], [], [], 2)
             if len(read) > 0:
                 # The socket received an ACK from the server.
                 data = sock.recv(socket_helpers.SERVER_HEADER_SIZE)
