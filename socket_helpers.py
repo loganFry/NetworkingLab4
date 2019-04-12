@@ -73,13 +73,13 @@ def read_client_header(data):
     ip = ip_1 + '.' + ip_2 + '.' + ip_3 + '.' + ip_4
 
     # next 2 bytes are the port number
-    port = int.from_bytes(data[4:6], byteorder='big') 
+    port = int.from_bytes(data[4:6], byteorder='big')
 
     # next byte is the flag 
     flag = int(data[6])
 
     # last byte is the sequence number
-    seq = int.from_bytes(data[7], byteorder='big')
+    seq = int(data[7])
 
     return (ip, port, flag, seq)
 
@@ -92,7 +92,7 @@ def read_server_header(data):
     """
     
     
-    seq = int.from_bytes(data[0], byteorder='big')
+    seq = int(data[0])
     return seq
 
 def get_next_seq(current_seq):
