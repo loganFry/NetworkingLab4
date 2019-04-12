@@ -83,7 +83,7 @@ def send_metadata(file_path, sock, troll_port, client_ip, client_port):
             elif seq == 1:
                 # Server received seg 2
                 print('seg 2 ACKed')
-                break                
+                return                
         else:
             # Timeout, resend the current segment
             if not seg_1_acked:
@@ -142,7 +142,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
                 # The socket received an ACK from the server.
                 data = sock.recv(socket_helpers.SERVER_HEADER_SIZE)
                 seq = socket_helpers.read_server_header(data)
-                print('Received ACK with seq ' + str(seq))
+                print('Received ACK for seq ' + str(seq))
                 if seq == current_seq:
                     # Received an ACK for the current chunk, move to next sequence number
                     # and read the next chunk of the file
@@ -151,7 +151,7 @@ def send_file(file_path, sock, troll_port, client_ip, client_port):
             else:
                 # Timeout, do not update any state, we will resend the same chunk and sequence 
                 # number.
-                print('Timeout ocurred')
+                print('Timeout ocurred, will resend seq ' + str(current_seq))
    
             
             header = socket_helpers.create_client_header(client_ip, client_port, 3, current_seq)

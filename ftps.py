@@ -80,6 +80,7 @@ def receive_file(sock, file_size, file_name, troll_port):
                 # ACK the received packet
                 ack = socket_helpers.create_server_header(current_seq)
                 sock.sendto(ack, ('', troll_port))
+                print('sent ACK for seq ' + str(current_seq))
 
                 # Write the chunk to the new file and update server state
                 f.write(data[socket_helpers.CLIENT_HEADER_SIZE:])

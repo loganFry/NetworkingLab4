@@ -1,4 +1,4 @@
-Server: epsilon 164.107.113.21
+Server (System 2): epsilon 164.107.113.21
 python3 ftps.py <local-port-on-System-2> <troll-port-on-System-2>
 Example:
 python3 ftps.py 6789 6790
@@ -7,7 +7,7 @@ troll -C <IP-address-of-System-2> -S <IP-address-of-System-1> -a <server-port-on
 Example:
 troll -C 127.0.0.1 -S 164.107.113.22 -a 6789 -b 5555 6790 -t -x 10
 
-Client: zeta 164.107.113.22
+Client (System 1): zeta 164.107.113.22
 python3 ftpc.py <IP-address-of-System-2> <remote-port-on-System-2> <troll-port-on-System-1> \
 <local-file-to-transfer>
 Example:
