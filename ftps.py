@@ -84,9 +84,8 @@ def receive_file(sock, file_size, file_name):
                 f.write(data[socket_helpers.CLIENT_HEADER_SIZE:])
                 total_read += 1000.0
                 current_seq = socket_helpers.get_next_seq(current_seq)
-                pct_read = total_read / file_size * 100
-                if pct_read % 10 == 0:
-                    print('wrote ' + str(pct_read) + '%% of file')
+                if int(total_read) % 500000 == 0:
+                    print('received another 500,000 bytes of the file')
 
 def create_output_dir(output_dir):
     """
