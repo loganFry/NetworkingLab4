@@ -47,7 +47,7 @@ def get_inputs():
             sys.exit()
         return (server_port, troll_port)
 
-def receive_file(sock, file_size, file_name):
+def receive_file(sock, file_size, file_name, troll_port):
     """
     Receives file data over a TCP connection.
     
@@ -55,6 +55,7 @@ def receive_file(sock, file_size, file_name):
         sock: The UDP socket to receive data over.
         file_size: Size of the file in bytes.
         file_name: Name of the file.
+        troll_port: The local port number troll is running on.
     """
     
     # Ensure that the output directory exists
@@ -78,7 +79,7 @@ def receive_file(sock, file_size, file_name):
             else:
                 # ACK the received packet
                 ack = socket_helpers.create_server_header(current_seq)
-                sock.sendto(ack, (CLIENT_IP, CLIENT_PORT))
+                sock.sendto(ack, ('', troll_port))
 
                 # Write the chunk to the new file and update server state
                 f.write(data[socket_helpers.CLIENT_HEADER_SIZE:])
@@ -115,14 +116,13 @@ def ensure_correct_client(ip, port):
 
 # Begin main code
 if __name__ == '__main__':
-    HOST = '' # Symbolic name meaning all available interfaces
     # Get port number to open socket on
     SERVER_PORT, TROLL_PORT = get_inputs()
     IP = socket.gethostbyname(socket.gethostname())
 
     # Create the socket and bind to port
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind((HOST, SERVER_PORT))
+    s.bind(('', SERVER_PORT))
     print('server socket binded to ip ' + IP + ', port ' + str(SERVER_PORT))
 
     # Initialize server state
@@ -149,7 +149,7 @@ if __name__ == '__main__':
                     print('segment 1 received, file size is ' + str(file_size) + ' bytes')
                     state = ServerState.AwaitingFileName
                     header = socket_helpers.create_server_header(seq)
-                    s.sendto(header, (CLIENT_IP, CLIENT_PORT))
+                    s.sendto(header, ('', TROLL_PORT))
                     print('sent seg 1 ACK')
             elif state == ServerState.AwaitingFileName:
                 # Get data and read header
@@ -165,10 +165,10 @@ if __name__ == '__main__':
                     print('segment 2 received, file name is ' + file_name)
                     state = ServerState.AwaitingFile
                     header = socket_helpers.create_server_header(seq)
-                    s.sendto(header, (CLIENT_IP, CLIENT_PORT))
+                    s.sendto(header, ('', TROLL_PORT))
                     print('sent seg 2 ACK')
             elif state == ServerState.AwaitingFile:
-                receive_file(s, file_size, file_name)
+                receive_file(s, file_size, file_name, TROLL_PORT)
                 print('File transferred successfully')
                 break
         except Exception as e:
